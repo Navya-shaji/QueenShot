@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, LogOut, Mail, User } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { loginWithGoogleToken } = useAuth();
+  const { loginWithGoogleToken, user, logout } = useAuth();
   const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
@@ -26,18 +26,14 @@ export const Login: React.FC = () => {
       setGoogleScriptLoaded(true);
     };
     script.onerror = () => {
-      console.warn('Google GSI script failed to load. Using Dev Bypass fallback.');
+      console.warn('Google GSI script failed to load.');
     };
     document.body.appendChild(script);
-
-    return () => {
-      // Keep script loaded for simplicity, no cleanup needed
-    };
   }, []);
 
-  // Initialize Google Sign-In button
+  // Initialize Google Sign-In button when NOT logged in
   useEffect(() => {
-    if (!googleScriptLoaded || !googleBtnRef.current) return;
+    if (user || !googleScriptLoaded || !googleBtnRef.current) return;
 
     try {
       const { google } = window as any;
@@ -66,12 +62,12 @@ export const Login: React.FC = () => {
     } catch (e) {
       console.error('Error rendering Google GSI button:', e);
     }
-  }, [googleScriptLoaded]);
+  }, [googleScriptLoaded, user]);
 
   return (
     <div className="container" style={{ justifyContent: 'center', alignItems: 'center', minHeight: '90vh' }}>
       
-      {/* Decorative stars */}
+      {/* Decorative stars space background */}
       <div className="space-bg">
         <div className="star" style={{ top: '15%', left: '20%', width: '3px', height: '3px' }} />
         <div className="star" style={{ top: '25%', left: '80%', width: '2px', height: '2px' }} />
@@ -101,7 +97,7 @@ export const Login: React.FC = () => {
             QUEEN<span style={{ color: 'var(--secondary)' }}>SHOT</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>
-            Multiplayer Carrom Physics Arena
+            {user ? 'Authenticated Session Portal' : 'Secure Account Login Portal'}
           </p>
         </div>
 
@@ -119,20 +115,110 @@ export const Login: React.FC = () => {
           </div>
         )}
 
-        {/* Google Authentication Method */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '600' }}>
-            Secure Authentication
-          </p>
-          
-          <div ref={googleBtnRef} style={{ minHeight: '44px', display: 'flex', justifyContent: 'center' }}>
-            {!googleScriptLoaded && (
-              <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontStyle: 'italic' }}>
-                Connecting Google Identity...
+        {/* Conditional View */}
+        {user ? (
+          /* Logged In Profile Card */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+            
+            {/* Avatar with glowing ring */}
+            <div style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              padding: '4px',
+              background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+              boxShadow: '0 0 20px var(--primary-glow)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {user.picture ? (
+                <img 
+                  src={user.picture} 
+                  alt={user.name} 
+                  style={{
+                    width: '92px',
+                    height: '92px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #0a0515'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '92px',
+                  height: '92px',
+                  borderRadius: '50%',
+                  background: '#150d2a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid #0a0515'
+                }}>
+                  <User size={36} color="var(--primary)" />
+                </div>
+              )}
+            </div>
+
+            {/* Profile Info */}
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0' }}>{user.name}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '14px', marginTop: '6px' }}>
+                <Mail size={14} color="var(--text-muted)" />
+                <span>{user.email}</span>
               </div>
-            )}
+            </div>
+
+            {/* Logout Button */}
+            <button 
+              onClick={logout}
+              style={{
+                width: '100%',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+                marginTop: '8px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <LogOut size={16} />
+              Sign Out
+            </button>
+
           </div>
-        </div>
+        ) : (
+          /* Unauthenticated Google Sign-In */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '600' }}>
+              Secure Authentication
+            </p>
+            
+            <div ref={googleBtnRef} style={{ minHeight: '44px', display: 'flex', justifyContent: 'center' }}>
+              {!googleScriptLoaded && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontStyle: 'italic' }}>
+                  Connecting Google Identity...
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

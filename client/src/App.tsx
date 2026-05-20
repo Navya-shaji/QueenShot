@@ -1,14 +1,10 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SocketProvider, useSocket } from './contexts/SocketContext';
 import { Login } from './components/Login';
-import { Lobby } from './components/Lobby';
-import { GameRoom } from './components/GameRoom';
-import { Swords } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
-  const { roomId } = useSocket();
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -29,7 +25,7 @@ const AppContent: React.FC = () => {
           animation: 'spin 1s linear infinite'
         }} />
         <p style={{ color: 'var(--text-secondary)', fontSize: '14px', fontFamily: 'var(--mono)' }}>
-          Warming up motors...
+          Authenticating secure channel...
         </p>
         <style>{`
           @keyframes spin {
@@ -73,26 +69,20 @@ const AppContent: React.FC = () => {
             justifyContent: 'center',
             boxShadow: '0 4px 12px var(--primary-glow)'
           }}>
-            <Swords size={18} color="#fff" />
+            <Sparkles size={18} color="#fff" />
           </div>
           <span style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '0.5px' }}>
             QUEEN<span style={{ color: 'var(--secondary)' }}>SHOT</span>
           </span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--mono)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>
-          Beta v1.0.4 • Sandbox Sandbox
+          Beta v2.0.0 • Google Authentication Portal
         </div>
       </header>
 
       {/* Screen Router */}
       <main style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        {!isAuthenticated ? (
-          <Login />
-        ) : roomId ? (
-          <GameRoom />
-        ) : (
-          <Lobby />
-        )}
+        <Login />
       </main>
 
       {/* Premium Footer */}
@@ -104,7 +94,7 @@ const AppContent: React.FC = () => {
         borderTop: '1px solid rgba(255, 255, 255, 0.03)',
         marginTop: 'auto'
       }}>
-        QueenShot Carrom Physics Board Arena &copy; 2026. Made with passion for high fidelity web gaming.
+        QueenShot Secure Google Login Portal &copy; 2026. All rights reserved.
       </footer>
     </>
   );
@@ -113,9 +103,7 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <AuthProvider>
-      <SocketProvider>
-        <AppContent />
-      </SocketProvider>
+      <AppContent />
     </AuthProvider>
   );
 }
