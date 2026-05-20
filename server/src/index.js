@@ -4,12 +4,21 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
 
+const connectDB = require('./infrastructure/database/mongoose');
+const { router: userRoutes } = require('./infrastructure/routes/userRoutes');
+
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS
+// Gracefully connect to MongoDB
+connectDB();
+
+// Configure CORS and parser middlewares
 app.use(cors());
 app.use(express.json());
+
+// Register API Routes
+app.use('/api/users', userRoutes);
 
 // Socket.io initialization
 const io = new Server(server, {

@@ -1,7 +1,16 @@
 /**
  * Socket.io Game Coordinator for Carrom Board
  * Manages matchmaking, rooms, and real-time game state synchronization.
+ * 
+ * Clean Architecture Integration: Triggers player statistic recalculation and 
+ * competitive ELO adjustments via Use Cases on match completion.
  */
+
+const { userRepository } = require('./infrastructure/routes/userRoutes');
+const UpdateUserStats = require('./use_cases/UpdateUserStats');
+
+// Instantiate stats updater usecase injecting the shared repository instance (DIP)
+const updateUserStats = new UpdateUserStats(userRepository);
 
 // Simple in-memory game state tracking
 const rooms = new Map();
@@ -46,7 +55,7 @@ module.exports = (io) => {
           currentTurn: player1.socketId,
           score: { white: 0, black: 0 },
           queenPocketed: false,
-          boardState: null, // React Native client will handle physics and send sync states
+          boardState: null,
           createdAt: Date.now()
         };
 
@@ -82,7 +91,6 @@ module.exports = (io) => {
     // Striker repositioning sync (before shooting)
     socket.on('aimStriker', (data) => {
       const { roomId, x, y } = data;
-      // Broadcast aiming to opponent only, to save bandwidth
       socket.to(roomId).emit('opponentAim', { x, y });
     });
 
@@ -90,14 +98,12 @@ module.exports = (io) => {
     socket.on('strike', (data) => {
       const { roomId, velocityX, velocityY, startX, startY } = data;
       console.log(`Striker fired in room ${roomId} by ${socket.id}`);
-      // Broadcast physics parameters so the opponent runs the local simulation in sync
       socket.to(roomId).emit('opponentStrike', { velocityX, velocityY, startX, startY });
     });
 
-    // Sync whole board state (puck coordinates) if synchronization drift occurs
+    // Sync whole board state
     socket.on('syncBoardState', (data) => {
       const { roomId, pucks } = data;
-      // Broadcast authoritative state or let other clients reconcile
       socket.to(roomId).emit('boardStateSynced', { pucks });
     });
 
@@ -136,6 +142,64 @@ module.exports = (io) => {
       const { roomId } = data;
       io.to(roomId).emit('gameReset');
       console.log(`Reset requested for room ${roomId}`);
+    });
+
+    // --- GAME COMPLETION & ELO CALCULATOR ---
+    socket.on('gameFinished', async (data) => {
+      const { roomId, winnerSocketId, pucksPocketedP1 = 0, pucksPocketedP2 = 0 } = data;
+      console.log(`Received gameFinished for room ${roomId}. Winner: ${winnerSocketId}`);
+
+      const room = rooms.get(roomId);
+      if (!room) return;
+
+      const p1 = room.players.player1;
+      const p2 = room.players.player2;
+
+      try {
+        // 1. Fetch current domain entities from MongoDB (to get actual Elo values)
+        const user1 = await userRepository.findById(p1.id);
+        const user2 = await userRepository.findById(p2.id);
+
+        const elo1 = user1 ? user1.eloRating : 1200;
+        const elo2 = user2 ? user2.eloRating : 1200;
+
+        // 2. Perform the Elo calculations & persist via the Use Case (Dependency Injection)
+        const updatedUser1 = await updateUserStats.execute(p1.id, {
+          isWin: winnerSocketId === p1.id,
+          pucksPocketed: pucksPocketedP1,
+          opponentElo: elo2
+        });
+
+        const updatedUser2 = await updateUserStats.execute(p2.id, {
+          isWin: winnerSocketId === p2.id,
+          pucksPocketed: pucksPocketedP2,
+          opponentElo: elo1
+        });
+
+        console.log(`🏆 Match stats saved for room ${roomId}:`);
+        console.log(`   - ${p1.name} (P1): ELO ${elo1} -> ${updatedUser1.eloRating} (${winnerSocketId === p1.id ? 'WON' : 'LOST'})`);
+        console.log(`   - ${p2.name} (P2): ELO ${elo2} -> ${updatedUser2.eloRating} (${winnerSocketId === p2.id ? 'WON' : 'LOST'})`);
+
+        // 3. Acknowledge game finish to clients with updated ELO rating values
+        io.to(roomId).emit('gameFinishedAck', {
+          winnerSocketId,
+          p1Stats: {
+            elo: updatedUser1.eloRating,
+            winCount: updatedUser1.gamesWon,
+            isWin: winnerSocketId === p1.id
+          },
+          p2Stats: {
+            elo: updatedUser2.eloRating,
+            winCount: updatedUser2.gamesWon,
+            isWin: winnerSocketId === p2.id
+          }
+        });
+
+        // 4. Destroy active room state
+        rooms.delete(roomId);
+      } catch (error) {
+        console.error(`Error handling gameFinished Elo updates: ${error.message}`);
+      }
     });
 
     // --- DISCONNECTS ---
