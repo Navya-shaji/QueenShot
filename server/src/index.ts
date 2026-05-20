@@ -3,6 +3,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import app from './app';
 
 dotenv.config();
 
@@ -10,18 +12,10 @@ import connectDB from './infrastructure/database/mongoose';
 import { router as userRoutes } from './infrastructure/routes/userRoutes';
 import setupSocketHandlers from './socket';
 
-const app = express();
-const server = http.createServer(app);
-
-// Gracefully connect to MongoDB
+// Connect DB (using my refactored method or fallback to their log)
 connectDB();
 
-// Configure CORS and parser middlewares
-app.use(cors());
-app.use(express.json());
-
-// Register API Routes
-app.use('/api/users', userRoutes);
+const server = http.createServer(app);
 
 // Socket.io initialization
 const io = new Server(server, {
@@ -30,10 +24,6 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
   }
 });
-
-// Basic HTTP health check
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', message: 'Carrom backend is healthy and running.' });
 });
 
 // Load real-time socket events handler
