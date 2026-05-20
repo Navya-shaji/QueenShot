@@ -1,36 +1,20 @@
-const UserRepository = require('../../domain/repositories/UserRepository');
-const User = require('../../domain/entities/User');
-const UserModel = require('../../infrastructure/database/models/UserModel');
-const mongoose = require('mongoose');
+import { UserRepository } from '../../domain/repositories/UserRepository';
+import { User } from '../../domain/entities/User';
+import mongoose from 'mongoose';
+import UserModel from '../../infrastructure/database/models/UserModel';
 
-/**
- * MongooseUserRepository
- * Concrete database adapter implementing the abstract UserRepository domain contract.
- * 
- * Enforces Liskov Substitution Principle (LSP): Dynamically falls back to an
- * in-memory storage context if MongoDB connection is absent, enabling seamless integration
- * tests without modifying any business routing or application logic!
- */
-class MongooseUserRepository extends UserRepository {
+export class MongooseUserRepository implements UserRepository {
+  private mockDb: Map<string, User>;
+
   constructor() {
-    super();
-    // Transient in-memory store for mock fallback mode
-    this.mockDb = new Map();
+    this.mockDb = new Map<string, User>();
   }
 
-  /**
-   * Helper check to determine if MongoDB is active
-   */
-  isDbConnected() {
-    return mongoose.connection.readyState === 1; // 1 = Connected status
+  private isDbConnected(): boolean {
+    return mongoose.connection.readyState === 1;
   }
 
-  /**
-   * Helper mapper: Converts database documents to pure Domain Entity instances
-   * @param {Object} doc - Mongoose document
-   * @returns {User|null}
-   */
-  toDomain(doc) {
+  private toDomain(doc: any): User | null {
     if (!doc) return null;
     return new User({
       id: doc._id,
@@ -47,49 +31,38 @@ class MongooseUserRepository extends UserRepository {
     });
   }
 
-  /**
-   * Finds user by ID
-   */
-  async findById(id) {
+  async findById(id: string): Promise<User | null> {
     if (this.isDbConnected()) {
       try {
         const doc = await UserModel.findById(id);
         return this.toDomain(doc);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error querying user by ID in Mongo: ${error.message}`);
         return null;
       }
     } else {
-      // In-Memory Fallback
       return this.mockDb.get(id) || null;
     }
   }
 
-  /**
-   * Finds user by Email
-   */
-  async findByEmail(email) {
+  async findByEmail(email: string): Promise<User | null> {
     if (this.isDbConnected()) {
       try {
         const doc = await UserModel.findOne({ email });
         return this.toDomain(doc);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error querying user by Email in Mongo: ${error.message}`);
         return null;
       }
     } else {
-      // In-Memory Fallback
-      for (const user of this.mockDb.values()) {
+      for (const user of Array.from(this.mockDb.values())) {
         if (user.email === email) return user;
       }
       return null;
     }
   }
 
-  /**
-   * Saves or updates user domain object
-   */
-  async save(user) {
+  async save(user: User): Promise<User> {
     if (this.isDbConnected()) {
       try {
         const payload = {
@@ -103,20 +76,18 @@ class MongooseUserRepository extends UserRepository {
           coinsCollected: user.coinsCollected
         };
 
-        // Performs a standard Mongoose upsert based on the custom string _id
         const doc = await UserModel.findByIdAndUpdate(
           user.id,
           { $set: payload },
           { new: true, upsert: true, runValidators: true }
         );
 
-        return this.toDomain(doc);
-      } catch (error) {
+        return this.toDomain(doc)!;
+      } catch (error: any) {
         console.error(`Error saving user to MongoDB: ${error.message}`);
         throw error;
       }
     } else {
-      // In-Memory Fallback
       user.updatedAt = new Date();
       if (!user.createdAt) user.createdAt = new Date();
       this.mockDb.set(user.id, user);
@@ -124,5 +95,3 @@ class MongooseUserRepository extends UserRepository {
     }
   }
 }
-
-module.exports = MongooseUserRepository;

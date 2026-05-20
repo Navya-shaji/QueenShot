@@ -1,11 +1,14 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
-require('dotenv').config();
+import express, { Request, Response } from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import dotenv from 'dotenv';
 
-const connectDB = require('./infrastructure/database/mongoose');
-const { router: userRoutes } = require('./infrastructure/routes/userRoutes');
+dotenv.config();
+
+import connectDB from './infrastructure/database/mongoose';
+import { router as userRoutes } from './infrastructure/routes/userRoutes';
+import setupSocketHandlers from './socket';
 
 const app = express();
 const server = http.createServer(app);
@@ -29,12 +32,11 @@ const io = new Server(server, {
 });
 
 // Basic HTTP health check
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', message: 'Carrom backend is healthy and running.' });
 });
 
 // Load real-time socket events handler
-const setupSocketHandlers = require('./socket');
 setupSocketHandlers(io);
 
 // Start server

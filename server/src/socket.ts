@@ -1,23 +1,16 @@
-/**
- * Socket.io Game Coordinator for Carrom Board
- * Manages matchmaking, rooms, and real-time game state synchronization.
- * 
- * Clean Architecture Integration: Triggers player statistic recalculation and 
- * competitive ELO adjustments via Use Cases on match completion.
- */
-
-const { userRepository } = require('./infrastructure/routes/userRoutes');
-const UpdateUserStats = require('./use_cases/UpdateUserStats');
+import { Server, Socket } from 'socket.io';
+import { userRepository } from './infrastructure/routes/userRoutes';
+import { UpdateUserStats } from './use_cases/UpdateUserStats';
 
 // Instantiate stats updater usecase injecting the shared repository instance (DIP)
 const updateUserStats = new UpdateUserStats(userRepository);
 
 // Simple in-memory game state tracking
-const rooms = new Map();
-let matchmakingQueue = [];
+const rooms = new Map<string, any>();
+let matchmakingQueue: any[] = [];
 
-module.exports = (io) => {
-  io.on('connection', (socket) => {
+export default (io: Server) => {
+  io.on('connection', (socket: Socket) => {
     console.log(`User connected: ${socket.id}`);
 
     // --- MATCHMAKING EVENT ---
@@ -197,7 +190,7 @@ module.exports = (io) => {
 
         // 4. Destroy active room state
         rooms.delete(roomId);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error handling gameFinished Elo updates: ${error.message}`);
       }
     });
@@ -210,7 +203,7 @@ module.exports = (io) => {
       matchmakingQueue = matchmakingQueue.filter(p => p.socketId !== socket.id);
 
       // Check all active rooms
-      for (const [roomId, room] of rooms.entries()) {
+      for (const [roomId, room] of Array.from(rooms.entries())) {
         if (room.players.player1.id === socket.id || room.players.player2.id === socket.id) {
           const opponentId = room.players.player1.id === socket.id 
             ? room.players.player2.id 

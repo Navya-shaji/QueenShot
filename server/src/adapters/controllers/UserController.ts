@@ -1,30 +1,19 @@
-/**
- * UserController (Interface Adapter)
- * Converts HTTP request details into parameters for our Use Cases,
- * executes them, and formats the returning domain entities as JSON API responses.
- * 
- * Enforces Single Responsibility Principle (SRP): Only maps HTTP inputs/outputs.
- */
-class UserController {
-  /**
-   * Injecting dependencies (Dependency Inversion Principle)
-   * @param {GetUserProfile} getUserProfileUsecase 
-   * @param {UpdateUserProfile} updateUserProfileUsecase 
-   */
-  constructor(getUserProfileUsecase, updateUserProfileUsecase) {
+import { Request, Response } from 'express';
+import { GetUserProfile } from '../../use_cases/GetUserProfile';
+import { UpdateUserProfile } from '../../use_cases/UpdateUserProfile';
+
+export class UserController {
+  private getUserProfile: GetUserProfile;
+  private updateUserProfile: UpdateUserProfile;
+
+  constructor(getUserProfileUsecase: GetUserProfile, updateUserProfileUsecase: UpdateUserProfile) {
     this.getUserProfile = getUserProfileUsecase;
     this.updateUserProfile = updateUserProfileUsecase;
   }
 
-  /**
-   * GET /api/users/profile
-   * Handles user profile retrieval
-   */
-  async getProfile(req, res) {
+  async getProfile(req: Request, res: Response) {
     try {
-      // Authentication integration: extract user identity from headers (for easy testing / dev matching)
-      // or from req.user (where other developers' passport/JWT middleware will set it)
-      const userId = req.headers['x-user-id'] || (req.user && req.user.id);
+      const userId = (req.headers['x-user-id'] as string) || ((req as any).user && (req as any).user.id);
 
       if (!userId) {
         return res.status(401).json({
@@ -33,16 +22,13 @@ class UserController {
         });
       }
 
-      // Metadata fallback for onboarding bootstrapping
       const defaultData = {
-        username: req.headers['x-user-name'] || null,
-        email: req.headers['x-user-email'] || null
+        username: (req.headers['x-user-name'] as string) || undefined,
+        email: (req.headers['x-user-email'] as string) || undefined
       };
 
-      // Execute the decoupled use case
       const user = await this.getUserProfile.execute(userId, defaultData);
 
-      // Return a clean, premium JSON response
       return res.status(200).json({
         success: true,
         data: {
@@ -62,7 +48,7 @@ class UserController {
           updatedAt: user.updatedAt
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error in UserController.getProfile: ${error.message}`);
       return res.status(400).json({
         success: false,
@@ -71,13 +57,9 @@ class UserController {
     }
   }
 
-  /**
-   * PUT /api/users/profile
-   * Handles profile details updates
-   */
-  async updateProfile(req, res) {
+  async updateProfile(req: Request, res: Response) {
     try {
-      const userId = req.headers['x-user-id'] || (req.user && req.user.id);
+      const userId = (req.headers['x-user-id'] as string) || ((req as any).user && (req as any).user.id);
 
       if (!userId) {
         return res.status(401).json({
@@ -88,7 +70,6 @@ class UserController {
 
       const { username, avatarUrl } = req.body;
 
-      // Execute decoupled update profile use case
       const user = await this.updateUserProfile.execute(userId, { username, avatarUrl });
 
       return res.status(200).json({
@@ -111,7 +92,7 @@ class UserController {
           updatedAt: user.updatedAt
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error in UserController.updateProfile: ${error.message}`);
       return res.status(400).json({
         success: false,
@@ -120,5 +101,3 @@ class UserController {
     }
   }
 }
-
-module.exports = UserController;

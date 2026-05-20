@@ -1,11 +1,11 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 /**
  * Connects to MongoDB using configured environmental string
  * Features a graceful fallback warning to ensure developers can run the server
  * even without an active local MongoDB instance configured!
  */
-const connectDB = async () => {
+const connectDB = async (): Promise<boolean> => {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/queenshot';
   
   try {
@@ -13,7 +13,7 @@ const connectDB = async () => {
     await mongoose.connect(uri);
     console.log('💚 MongoDB connection established successfully.');
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.log('\n⚠️  ==========================================================');
     console.log('⚠️   MONGODB CONNECTION WARNING!');
     console.log('⚠️   ----------------------------------------------------------');
@@ -27,4 +27,4 @@ const connectDB = async () => {
   }
 };
 
-module.exports = connectDB;
+export default connectDB;
