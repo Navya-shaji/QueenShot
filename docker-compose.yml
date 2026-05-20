@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # Node.js Express + Socket.io Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: queenshot_server
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+    restart: always
+
+  # React + TypeScript Frontend (served via Nginx)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: queenshot_client
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+    restart: always
