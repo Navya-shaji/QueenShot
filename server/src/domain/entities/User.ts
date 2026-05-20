@@ -17,6 +17,7 @@ export interface UserProps {
   eloRating?: number;
   coinsCollected?: number;
   createdAt?: Date;
+  
   updatedAt?: Date;
 }
 
