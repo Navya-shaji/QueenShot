@@ -47,4 +47,5 @@ router.post('/google-login', (req, res) => authController.googleLogin(req, res))
 // POST /api/auth/update-stats (Protected)
 router.post('/update-stats', authMiddleware, (req, res) => authController.updateStats(req, res));
 
+export { authMiddleware, jwtService };
 export default router;

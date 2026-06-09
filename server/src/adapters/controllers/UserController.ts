@@ -13,18 +13,19 @@ export class UserController {
 
   async getProfile(req: Request, res: Response) {
     try {
-      const userId = (req.headers['x-user-id'] as string) || ((req as any).user && (req as any).user.id);
+      // JWT middleware attaches decoded payload as req.user
+      const userId = (req as any).user?.userId;
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          error: 'Unauthorized: Missing authenticated User ID header (x-user-id).'
+          error: 'Unauthorized: Missing user session.'
         });
       }
 
       const defaultData = {
-        username: (req.headers['x-user-name'] as string) || undefined,
-        email: (req.headers['x-user-email'] as string) || undefined
+        username: (req as any).user?.name,
+        email: (req as any).user?.email,
       };
 
       const user = await this.getUserProfile.execute(userId, defaultData);
@@ -36,39 +37,43 @@ export class UserController {
           username: user.username,
           email: user.email,
           avatarUrl: user.avatarUrl,
-          stats: {
-            gamesPlayed: user.gamesPlayed,
-            gamesWon: user.gamesWon,
-            gamesLost: user.gamesLost,
-            winRatio: user.gamesPlayed > 0 ? parseFloat((user.gamesWon / user.gamesPlayed).toFixed(2)) : 0,
-            eloRating: user.eloRating,
-            coinsCollected: user.coinsCollected
-          },
+          gamesPlayed: user.gamesPlayed,
+          gamesWon: user.gamesWon,
+          gamesLost: user.gamesLost,
+          eloRating: user.eloRating,
+          coinsCollected: user.coinsCollected,
+          winRatio: user.gamesPlayed > 0
+            ? parseFloat((user.gamesWon / user.gamesPlayed).toFixed(2))
+            : 0,
           createdAt: user.createdAt,
-          updatedAt: user.updatedAt
+          updatedAt: user.updatedAt,
         }
       });
     } catch (error: any) {
-      console.error(`Error in UserController.getProfile: ${error.message}`);
-      return res.status(400).json({
-        success: false,
-        error: error.message
-      });
+      console.error(`UserController.getProfile error: ${error.message}`);
+      return res.status(400).json({ success: false, error: error.message });
     }
   }
 
   async updateProfile(req: Request, res: Response) {
     try {
-      const userId = (req.headers['x-user-id'] as string) || ((req as any).user && (req as any).user.id);
+      const userId = (req as any).user?.userId;
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          error: 'Unauthorized: Missing authenticated User ID header (x-user-id).'
+          error: 'Unauthorized: Missing user session.'
         });
       }
 
       const { username, avatarUrl } = req.body;
+
+      if (!username && !avatarUrl) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least one field (username or avatarUrl) is required.'
+        });
+      }
 
       const user = await this.updateUserProfile.execute(userId, { username, avatarUrl });
 
@@ -80,24 +85,21 @@ export class UserController {
           username: user.username,
           email: user.email,
           avatarUrl: user.avatarUrl,
-          stats: {
-            gamesPlayed: user.gamesPlayed,
-            gamesWon: user.gamesWon,
-            gamesLost: user.gamesLost,
-            winRatio: user.gamesPlayed > 0 ? parseFloat((user.gamesWon / user.gamesPlayed).toFixed(2)) : 0,
-            eloRating: user.eloRating,
-            coinsCollected: user.coinsCollected
-          },
+          gamesPlayed: user.gamesPlayed,
+          gamesWon: user.gamesWon,
+          gamesLost: user.gamesLost,
+          eloRating: user.eloRating,
+          coinsCollected: user.coinsCollected,
+          winRatio: user.gamesPlayed > 0
+            ? parseFloat((user.gamesWon / user.gamesPlayed).toFixed(2))
+            : 0,
           createdAt: user.createdAt,
-          updatedAt: user.updatedAt
+          updatedAt: user.updatedAt,
         }
       });
     } catch (error: any) {
-      console.error(`Error in UserController.updateProfile: ${error.message}`);
-      return res.status(400).json({
-        success: false,
-        error: error.message
-      });
+      console.error(`UserController.updateProfile error: ${error.message}`);
+      return res.status(400).json({ success: false, error: error.message });
     }
   }
 }

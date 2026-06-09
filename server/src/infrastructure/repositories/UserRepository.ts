@@ -31,8 +31,8 @@ export class UserRepository implements IUserRepository {
       xp: user.xp,
       gamesPlayed: user.gamesPlayed,
       wins: user.wins,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      createdAt: user.createdAt ?? new Date(),
+      updatedAt: user.updatedAt ?? new Date(),
     };
 
     if (record) {
@@ -54,8 +54,8 @@ export class UserRepository implements IUserRepository {
       xp: record.xp ?? 0,
       gamesPlayed: record.gamesPlayed ?? 0,
       wins: record.wins ?? 0,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      createdAt: record.createdAt ?? new Date(),
+      updatedAt: record.updatedAt ?? new Date(),
     });
   }
 }

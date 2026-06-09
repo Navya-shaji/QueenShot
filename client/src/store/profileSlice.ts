@@ -1,6 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 
+const API = 'http://localhost:4000';
+
 export interface ProfileState {
   id: string | null;
   username: string;
@@ -11,7 +13,9 @@ export interface ProfileState {
   gamesLost: number;
   eloRating: number;
   coinsCollected: number;
+  winRatio: number;
   loading: boolean;
+  saving: boolean;
   error: string | null;
 }
 
@@ -25,32 +29,55 @@ const initialState: ProfileState = {
   gamesLost: 0,
   eloRating: 1200,
   coinsCollected: 0,
+  winRatio: 0,
   loading: false,
+  saving: false,
   error: null,
 };
 
+// Fetch the authenticated user's profile from the backend
 export const fetchProfile = createAsyncThunk(
   'profile/fetchProfile',
-  async (userId: string) => {
-    // Replace with actual API call once connected to backend
-    // const response = await fetch(`http://localhost:3000/api/users/${userId}`);
-    // return (await response.json()).data;
-    
-    // Mock response for now
-    return new Promise<Partial<ProfileState>>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          id: userId,
-          username: `Player_${userId.slice(-4)}`,
-          avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=Player_${userId.slice(-4)}`,
-          gamesPlayed: 12,
-          gamesWon: 7,
-          gamesLost: 5,
-          eloRating: 1350,
-          coinsCollected: 450,
-        });
-      }, 500);
-    });
+  async (token: string, { rejectWithValue }) => {
+    try {
+      const res = await fetch(`${API}/api/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return rejectWithValue(data.error || 'Failed to fetch profile.');
+      }
+      return data.data as Partial<ProfileState>;
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Network error fetching profile.');
+    }
+  }
+);
+
+// Update username and/or avatarUrl
+export const updateProfile = createAsyncThunk(
+  'profile/updateProfile',
+  async (
+    { token, username, avatarUrl }: { token: string; username?: string; avatarUrl?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await fetch(`${API}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username, avatarUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return rejectWithValue(data.error || 'Failed to update profile.');
+      }
+      return data.data as Partial<ProfileState>;
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Network error updating profile.');
+    }
   }
 );
 
@@ -58,11 +85,15 @@ const profileSlice = createSlice({
   name: 'profile',
   initialState,
   reducers: {
+    clearProfileError: (state) => {
+      state.error = null;
+    },
     updateProfileLocally: (state, action: PayloadAction<Partial<ProfileState>>) => {
       return { ...state, ...action.payload };
     },
   },
   extraReducers: (builder) => {
+    // fetchProfile
     builder
       .addCase(fetchProfile.pending, (state) => {
         state.loading = true;
@@ -73,10 +104,24 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch profile';
+        state.error = action.payload as string;
+      });
+
+    // updateProfile
+    builder
+      .addCase(updateProfile.pending, (state) => {
+        state.saving = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        return { ...state, ...action.payload, saving: false };
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.saving = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { updateProfileLocally } = profileSlice.actions;
+export const { clearProfileError, updateProfileLocally } = profileSlice.actions;
 export default profileSlice.reducer;

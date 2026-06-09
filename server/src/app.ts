@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './presentation/routes/authRoutes';
+import { router as userRoutes } from './infrastructure/routes/userRoutes';
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(express.json());
 
 // Register API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // Basic HTTP health check
 app.get('/health', (req, res) => {
