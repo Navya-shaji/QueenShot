@@ -17,6 +17,7 @@ export interface UserProps {
   eloRating?: number;
   coinsCollected?: number;
   createdAt?: Date;
+  
   updatedAt?: Date;
 }
 
@@ -36,8 +37,8 @@ export class User {
   public gamesLost: number;
   public eloRating: number;
   public coinsCollected: number;
-  public createdAt?: Date;
-  public updatedAt?: Date;
+  public createdAt: Date;
+  public updatedAt: Date;
 
   constructor(props: UserProps) {
     this.id = props.id;

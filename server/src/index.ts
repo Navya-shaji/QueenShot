@@ -1,39 +1,34 @@
-import express, { Request, Response } from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import cors from 'cors';
+import app from './app';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import app from './app';
 
 dotenv.config();
 
-import connectDB from './infrastructure/database/mongoose';
-import { router as userRoutes } from './infrastructure/routes/userRoutes';
-import setupSocketHandlers from './socket';
+// Database Connection with Graceful Fallback
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/queenshot';
 
-// Connect DB (using my refactored method or fallback to their log)
-connectDB();
+console.log(`Connecting to MongoDB at: ${MONGO_URI}...`);
+mongoose
+  .connect(MONGO_URI)
+  .then(() => {
+    console.log(`==========================================`);
+    console.log(`  Database: Connected to MongoDB successfully!`);
+    console.log(`==========================================`);
+  })
+  .catch((err) => {
+    console.log(`==========================================`);
+    console.log(`⚠️  DATABASE WARNING: Could not connect to MongoDB.`);
+    console.log(`   Error: ${err.message}`);
+    console.log(`   Please ensure MongoDB is running locally on port 27017,`);
+    console.log(`   or configure a valid MONGO_URI in your server/.env file.`);
+    console.log(`==========================================`);
+  });
 
-const server = http.createServer(app);
-
-// Socket.io initialization
-const io = new Server(server, {
-  cors: {
-    origin: '*', // In production, replace with specific origins for security
-    methods: ['GET', 'POST'],
-  }
-});
-});
-
-// Load real-time socket events handler
-setupSocketHandlers(io);
-
-// Start server
+// Start Express server directly
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`==========================================`);
-  console.log(`  Carrom Game Server is running on port ${PORT}`);
+  console.log(`  QueenShot Auth Server is running on port ${PORT}`);
   console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`==========================================`);
 });
